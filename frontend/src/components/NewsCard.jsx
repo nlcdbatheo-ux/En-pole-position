@@ -1,11 +1,15 @@
-import { Link } from "react-router-dom";
+import React from "react";
 
-function NewsCard({ article }) {
+function NewsCard({ title, summary }) {
   return (
-    <div style={{ padding: "1rem", background: "white", marginBottom: "1rem", borderRadius: "12px" }}>
-      <h2>{article.title}</h2>
-      <p>{article.content.slice(0, 120)}...</p>
-      <Link to={`/article/${article.id}`}>Lire plus →</Link>
+    <div style={{
+      border: "1px solid #ccc",
+      borderRadius: "8px",
+      padding: "1rem",
+      boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
+    }}>
+      <h2>{title}</h2>
+      <p>{summary}</p>
     </div>
   );
 }
