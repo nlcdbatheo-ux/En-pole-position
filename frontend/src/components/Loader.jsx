@@ -1,5 +1,5 @@
 function Loader() {
-  return <div className="text-center py-10">Chargement...</div>;
+  return <div style={{ textAlign: "center", padding: "2rem" }}>Chargement...</div>;
 }
 
 export default Loader;
