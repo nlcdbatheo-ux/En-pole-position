@@ -7,7 +7,7 @@ function Article() {
   const [article, setArticle] = useState(null);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/news`)
+    fetch("http://localhost:8000/news")
       .then((res) => res.json())
       .then((data) => {
         const a = data.find((x) => x.id === parseInt(id));
@@ -18,9 +18,9 @@ function Article() {
   if (!article) return <Loader />;
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold">{article.title}</h1>
-      <p className="mt-4">{article.content}</p>
+    <div style={{ padding: "2rem" }}>
+      <h1>{article.title}</h1>
+      <p>{article.content}</p>
     </div>
   );
 }
