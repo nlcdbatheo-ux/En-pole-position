@@ -11,7 +11,7 @@ function Home() {
   }, []);
 
   return (
-    <div className="p-6 grid gap-4">
+    <div style={{ padding: "2rem" }}>
       {articles.map((a) => (
         <NewsCard key={a.id} article={a} />
       ))}
