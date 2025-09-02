@@ -1,0 +1,13 @@
+# Node / frontend
+node_modules/
+dist/
+
+# Environnement / clés
+.env
+
+# Python
+*.pyc
+__pycache__/
+
+# Base de données locale
+database/news.db
