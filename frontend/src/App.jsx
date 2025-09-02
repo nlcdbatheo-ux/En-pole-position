@@ -1,13 +1,27 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import NewsCard from "./components/NewsCard.jsx";
 
 function App() {
-  // Exemple de données statiques pour tester l'affichage
-  const newsList = [
-    { id: 1, title: "Pole position: Verstappen", summary: "Verstappen domine les essais libres." },
-    { id: 2, title: "Hamilton en difficulté", summary: "Hamilton rencontre des problèmes techniques." },
-    { id: 3, title: "Leclerc sur le podium", summary: "Leclerc termine 3ème lors de la première session." }
-  ];
+  const [newsList, setNewsList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Remplace l'URL par celle de ton backend Render
+    fetch("https://en-pole-position-1.onrender.com/api/news")
+      .then((res) => res.json())
+      .then((data) => {
+        setNewsList(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Erreur lors du fetch des news:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return <p style={{ padding: "2rem" }}>Chargement des news…</p>;
+  }
 
   return (
     <div style={{ padding: "2rem", fontFamily: "Arial" }}>
