@@ -1,22 +1,19 @@
 from fastapi import FastAPI
-from backend import scraper, aggregator, gemini_client, db
+from fastapi.middleware.cors import CORSMiddleware
+from bot import run_bot
+from database import get_articles
 
-app = FastAPI()
+app = FastAPI(title="En pole position API")
 
-@app.get("/")
-def home():
-    return {"message": "En pole position API"}
+# Autoriser le frontend à faire fetch
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Remplace par l'URL de ton frontend pour plus de sécurité
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
-@app.get("/news")
+@app.get("/api/news")
 def get_news():
-    return db.get_all_articles()
-
-@app.post("/generate")
-def generate_news():
-    infos = scraper.scrape_sites()
-    validated = aggregator.validate(infos)
-    if validated:
-        article = gemini_client.generate_article(validated)
-        db.save_article(article)
-        return {"status": "ok", "article": article}
-    return {"status": "no_new_info"}
+    run_bot()  # Lance le bot à chaque requête pour obtenir les dernières infos
+    return get_articles()
