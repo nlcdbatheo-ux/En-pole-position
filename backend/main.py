@@ -1,29 +1,33 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import get_all_articles
+from .database import get_articles
 from .bot import run_bot
-import threading
-import time
 
-app = FastAPI()
+app = FastAPI(title="En Pôle Position API")
+
+# Autoriser le frontend
+origins = [
+    "*",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # adapter si besoin
+    allow_origins=origins,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 @app.get("/articles")
-def read_articles():
-    return get_all_articles()
+def articles():
+    return get_articles()
 
-def start_bot_loop():
-    while True:
-        try:
-            run_bot()
-        except Exception as e:
-            print(f"Erreur bot: {e}")
-        time.sleep(60*30)  # toutes les 30 minutes
+@app.on_event("startup")
+def startup_event():
+    print("Lancement du bot...")
+    run_bot()
 
-threading.Thread(target=start_bot_loop, daemon=True).start()
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=True)
