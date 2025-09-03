@@ -1,131 +1,26 @@
-:root{
-  --bg: #0b0d10;
-  --panel: #11151a;
-  --muted: #7a8599;
-  --text: #e8edf7;
-  --brand: #ef4444; /* rouge racing */
-  --brand-2: #22d3ee; /* cyan accent */
-  --ring: rgba(34, 211, 238, 0.35);
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Animations custom */
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
-*{ box-sizing: border-box; }
-html,body,#root{ height:100%; }
-body{
-  margin:0;
-  background: radial-gradient(1200px 600px at 120% -10%, rgba(34,211,238,.08), transparent 60%),
-              radial-gradient(900px 600px at -10% -10%, rgba(239,68,68,.10), transparent 60%),
-              var(--bg);
-  color: var(--text);
-  font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease-out forwards;
 }
 
-.container{
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 28px 20px 80px;
+.card {
+  @apply bg-white rounded-xl shadow-lg p-5 transition-transform transform hover:scale-105;
 }
-
-.header{
-  display:flex; align-items:center; justify-content:space-between; gap:16px;
-  margin-bottom: 22px;
+.card h2 {
+  @apply text-xl font-bold mb-2 text-red-600;
 }
-
-.brand{
-  display:flex; align-items:center; gap:12px;
+.card p {
+  @apply text-gray-700 mb-3;
 }
-.logo{
-  width:42px; height:42px; border-radius:12px;
-  background:
-    conic-gradient(from 210deg, var(--brand), var(--brand-2));
-  box-shadow: 0 0 0 4px #1117, 0 10px 30px rgba(34,211,238,.12);
-}
-.title{
-  line-height:1.05; margin:0;
-  font-size: 24px; font-weight: 800; letter-spacing: 0.2px;
-}
-.subtitle{
-  margin:0; color: var(--muted); font-size: 13.5px;
-}
-
-.toolbar{
-  display:flex; gap:10px; align-items:center;
-}
-.btn{
-  appearance:none; border:none; cursor:pointer;
-  background: linear-gradient(180deg, #1a232c, #12161b);
-  color: var(--text); padding: 10px 14px; font-weight:600; border-radius:12px;
-  transition: transform .14s ease, box-shadow .14s ease, background .2s ease;
-  box-shadow: 0 0 0 1px #202733, 0 6px 18px rgba(0,0,0,.35);
-}
-.btn:hover{ transform: translateY(-1px); box-shadow: 0 0 0 1px var(--ring), 0 8px 24px rgba(34,211,238,.15); }
-.btn.primary{
-  background: linear-gradient(180deg, #ef4444, #c02727);
-  box-shadow: 0 0 0 1px #3a0d0d, 0 10px 28px rgba(239,68,68,.35);
-}
-.btn.primary:hover{ box-shadow: 0 0 0 1px #6b1b1b, 0 12px 30px rgba(239,68,68,.45); }
-
-.grid{
-  display:grid; gap:16px;
-  grid-template-columns: repeat(12, 1fr);
-}
-.card{
-  grid-column: span 12;
-  background: linear-gradient(180deg, #10141a, #0f1318);
-  border: 1px solid #1b2230;
-  border-radius: 18px;
-  padding: 16px;
-  position: relative;
-  overflow: hidden;
-  transition: border-color .2s ease, transform .12s ease;
-}
-.card:hover{ border-color:#263247; transform: translateY(-2px); }
-.card::after{
-  content:""; position:absolute; inset:-1px; pointer-events:none;
-  background: radial-gradient(300px 120px at var(--mx,80%) -10%, rgba(34,211,238,.10), transparent 50%);
-  transition: opacity .2s ease;
-  opacity:.7;
-}
-
-.card-header{
-  display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
-}
-.card-title{
-  margin:0; font-size: 18px; font-weight:700; line-height:1.25;
-}
-.card-meta{
-  margin:6px 0 0; color: var(--muted); font-size:13px;
-}
-
-.actions{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-}
-.badge{
-  padding:6px 9px; border-radius:10px; font-size:12px; color:#d7f9fe;
-  background: linear-gradient(180deg, #15323a, #0e242a);
-  border:1px solid #1a3c45;
-}
-
-.summary{
-  margin-top:12px; color:#cfe8ff; line-height:1.6; font-size:14.2px;
-  background: linear-gradient(180deg,#0e1620,#0c1218);
-  border:1px solid #1a2230; border-radius:14px; padding:12px 14px;
-}
-
-@media (min-width: 720px){
-  .card{ grid-column: span 6; }
-}
-@media (min-width: 1024px){
-  .card{ grid-column: span 4; }
-}
-
-.skeleton{
-  height: 120px; border-radius:16px; background:
-    linear-gradient(90deg, #0f141a 25%, #131a22 37%, #0f141a 63%);
-  background-size: 400% 100%;
-  animation: shimmer 1.1s infinite linear;
-  border:1px solid #1b2230;
-}
-@keyframes shimmer{
-  0%{ background-position: 0% 0; }
-  100%{ background-position: -200% 0; }
+.card a {
+  @apply text-blue-500 hover:underline;
 }
