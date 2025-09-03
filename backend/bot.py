@@ -1,34 +1,25 @@
+from backend.ai import query_gemmy
 import requests
 from bs4 import BeautifulSoup
-from .ai import query_gemmy
 
-def fetch_articles():
-    """
-    Récupère les articles F1 depuis les sites.
-    """
-    urls = ["https://www.f1i.com/news/", "https://www.formula1.com/en/latest.html"]
+def get_articles():
+    url = "https://www.f1i.com/news/"
+    res = requests.get(url)
+    soup = BeautifulSoup(res.content, "html.parser")
+    
     articles = []
-
-    for url in urls:
-        try:
-            res = requests.get(url, verify=False, timeout=10)  # certificat ignoré pour l'instant
-            res.raise_for_status()
-            soup = BeautifulSoup(res.text, "html.parser")
-            for item in soup.select("a.article-title"):  # adapte le sélecteur au site réel
-                articles.append({"title": item.get_text(), "url": item["href"]})
-        except Exception as e:
-            print(f"Erreur lors de la récupération de {url}: {e}")
+    for item in soup.select(".news-item"):  # Adapter le sélecteur au site réel
+        title = item.select_one(".title").text.strip()
+        link = item.select_one("a")["href"]
+        articles.append({"title": title, "link": link})
     return articles
 
 def run_bot():
-    """
-    Lance le bot : récupère les articles, génère un résumé et affiche.
-    """
-    print("Bot lancé : récupération des articles...")
-    articles = fetch_articles()
+    articles = get_articles()
     for article in articles:
         try:
             summary = query_gemmy(f"Résumé court pour cet article F1 : {article['title']}")
-            print(f"{article['title']}\n-> {summary}\n")
+            print(f"Article: {article['title']}")
+            print(f"Résumé: {summary}\n")
         except Exception as e:
-            print(f"Erreur AI pour {article['title']}: {e}")
+            print(f"Erreur pour l'article {article['title']}: {e}")
