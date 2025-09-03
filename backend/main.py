@@ -1,42 +1,56 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.bot import run_bot, get_all_articles, cross_check_articles
+from fastapi.responses import JSONResponse
 
-app = FastAPI(title="En Pole Position API", version="1.0")
+import requests
+from bs4 import BeautifulSoup
 
-# Autoriser le front-end à accéder à l'API
+app = FastAPI()
+
+# Autoriser le frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # ⚠️ en prod mets ton vrai domaine
+    allow_origins=["*"],  # remplacer par ton URL frontend si nécessaire
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-def startup_event():
-    """
-    Au démarrage du backend, on lance le bot une première fois.
-    """
-    print("🚀 API démarrée - Lancement du bot en arrière-plan...")
-    run_bot()
+SITES = {
+    "F1i": "https://www.f1i.com/news/",
+    "Motorsport": "https://www.motorsport.com/f1/news/",
+    # ajouter d'autres sites si besoin
+}
 
-@app.get("/")
-def root():
-    return {"message": "Bienvenue sur l'API En Pole Position 🏎️"}
+def scrape_f1i():
+    try:
+        res = requests.get(SITES["F1i"], verify=False, timeout=10)
+        res.raise_for_status()
+    except Exception:
+        return []
+    soup = BeautifulSoup(res.text, "html.parser")
+    return [
+        {"title": item.select_one("h3 a").text.strip(),
+         "url": item.select_one("h3 a")["href"]}
+        for item in soup.select(".news-list .news-item")[:5]
+    ]
 
-@app.get("/articles")
-def get_articles():
-    """
-    Retourne les articles bruts (tous sites).
-    """
-    return get_all_articles()
+def scrape_motorsport():
+    try:
+        res = requests.get(SITES["Motorsport"], verify=False, timeout=10)
+        res.raise_for_status()
+    except Exception:
+        return []
+    soup = BeautifulSoup(res.text, "html.parser")
+    return [
+        {"title": item.select_one("a").text.strip(),
+         "url": item.select_one("a")["href"]}
+        for item in soup.select(".ms-item_title")[:5]
+    ]
 
 @app.get("/validated")
-def get_validated_articles():
-    """
-    Retourne uniquement les articles validés par comparaison IA.
-    """
-    articles = get_all_articles()
-    validated = cross_check_articles(articles)
-    return validated
+async def get_validated_articles():
+    articles = scrape_f1i() + scrape_motorsport()
+    if not articles:
+        return JSONResponse(status_code=404, content={"message": "Aucun article trouvé"})
+    return articles
