@@ -1,1 +1,7 @@
-export const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:10000";
+// Ici on définit l'URL de ton backend (Render).
+// ⚠️ Mets bien l’URL de ton backend (pas celle du frontend)
+const config = {
+  API_BASE_URL: "https://en-pole-position-1.onrender.com"
+};
+
+export default config;
