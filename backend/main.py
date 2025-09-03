@@ -1,56 +1,22 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from backend.bot import run_bot, get_validated_articles
 
-import requests
-from bs4 import BeautifulSoup
+app = FastAPI(title="En Pôle Position API")
 
-app = FastAPI()
-
-# Autoriser le frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # remplacer par ton URL frontend si nécessaire
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-SITES = {
-    "F1i": "https://www.f1i.com/news/",
-    "Motorsport": "https://www.motorsport.com/f1/news/",
-    # ajouter d'autres sites si besoin
-}
-
-def scrape_f1i():
-    try:
-        res = requests.get(SITES["F1i"], verify=False, timeout=10)
-        res.raise_for_status()
-    except Exception:
-        return []
-    soup = BeautifulSoup(res.text, "html.parser")
-    return [
-        {"title": item.select_one("h3 a").text.strip(),
-         "url": item.select_one("h3 a")["href"]}
-        for item in soup.select(".news-list .news-item")[:5]
-    ]
-
-def scrape_motorsport():
-    try:
-        res = requests.get(SITES["Motorsport"], verify=False, timeout=10)
-        res.raise_for_status()
-    except Exception:
-        return []
-    soup = BeautifulSoup(res.text, "html.parser")
-    return [
-        {"title": item.select_one("a").text.strip(),
-         "url": item.select_one("a")["href"]}
-        for item in soup.select(".ms-item_title")[:5]
-    ]
+# Serve React build
+app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="frontend")
 
 @app.get("/validated")
-async def get_validated_articles():
-    articles = scrape_f1i() + scrape_motorsport()
-    if not articles:
-        return JSONResponse(status_code=404, content={"message": "Aucun article trouvé"})
-    return articles
+async def validated_articles():
+    try:
+        articles = get_validated_articles()
+        return JSONResponse(content=articles)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.on_event("startup")
+async def startup_event():
+    import threading
+    threading.Thread(target=run_bot, daemon=True).start()
