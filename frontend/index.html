@@ -1,19 +1,28 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>En Pôle Position</title>
+  <link href="style.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
 
-/* Petites animations custom */
-@keyframes fadeInUp {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+  <header class="bg-red-600 text-white py-6 shadow-md">
+    <h1 class="text-4xl font-extrabold text-center">En Pôle Position</h1>
+    <p class="text-center text-lg mt-2">Les dernières infos F1 validées par IA</p>
+  </header>
 
-.animate-fadeInUp {
-  animation: fadeInUp 0.6s ease-out forwards;
-}
+  <main class="max-w-5xl mx-auto mt-8 px-4">
+    <div id="articles" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <!-- Les articles seront injectés ici par JS -->
+    </div>
+  </main>
+
+  <footer class="bg-gray-200 text-gray-700 py-6 mt-12 text-center">
+    © 2025 En Pôle Position | Sources multiples vérifiées par IA
+  </footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
