@@ -2,52 +2,45 @@ import os
 import requests
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-def analyze_articles(articles):
-    """
-    Envoie la liste d'articles à OpenRouter et demande de regrouper + résumer.
-    articles = [{ "title": "...", "url": "...", "source": "..." }]
-    """
-    prompt = f"""
-Tu es une IA journaliste spécialisée en F1.
-Voici des articles bruts provenant de différents sites :
+MODEL = "gemini-2.5-flash"
 
-{articles}
+HEADERS = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json"
+}
 
-Tâche :
-1. Regroupe les articles qui parlent du même sujet (même info, même événement).
-2. Si une info apparaît sur au moins 2 sites différents → valide-la.
-3. Crée un résumé clair (1 phrase max).
-4. Retourne un JSON avec :
-[
-  {{
-    "title": "...",
-    "summary": "...",
-    "sources": ["url1", "url2"]
-  }},
-  ...
-]
-"""
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "google/gemini-1.5-flash",  # rapide et pas cher
-            "messages": [
-                {"role": "system", "content": "Tu es une IA journaliste F1."},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.3,
-        },
+def are_articles_similar(title1, content1, title2, content2):
+    prompt = (
+        "Compare these two news articles. "
+        "Return True if they convey roughly the same information, else False.\n\n"
+        f"Article 1 Title: {title1}\nContent: {content1}\n\n"
+        f"Article 2 Title: {title2}\nContent: {content2}\n"
     )
-    data = resp.json()
-    try:
-        text = data["choices"][0]["message"]["content"]
-        return eval(text)  # ATTENTION: en vrai, tu devrais parser JSON proprement
-    except Exception as e:
-        print("Erreur analyse IA:", e, data)
-        return []
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0
+    }
+    response = requests.post(OPENROUTER_URL, json=payload, headers=HEADERS)
+    response.raise_for_status()
+    result = response.json()
+    text = result["choices"][0]["message"]["content"].strip().lower()
+    return "true" in text
+
+def summarize_article(title, content):
+    prompt = (
+        "Summarize this news article in 2-3 sentences.\n\n"
+        f"Title: {title}\nContent: {content}\n"
+    )
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.5
+    }
+    response = requests.post(OPENROUTER_URL, json=payload, headers=HEADERS)
+    response.raise_for_status()
+    result = response.json()
+    return result["choices"][0]["message"]["content"].strip()
 
