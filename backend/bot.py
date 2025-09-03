@@ -1,31 +1,45 @@
 import requests
 from bs4 import BeautifulSoup
-from .database import save_articles
-from .ai import analyze_articles
+from datetime import datetime
+from .ai import summarize_and_compare
+from .database import add_article
 
-SOURCES = {
-    "Formula1": "https://www.formula1.com/en/latest/all.html",
-    "Motorsport": "https://www.motorsport.com/f1/news/",
-    "Autosport": "https://www.autosport.com/f1/news/",
-    "ESPN F1": "https://www.espn.com/f1/",
-    "L'Équipe": "https://www.lequipe.fr/Formule-1/",
-}
+SITES = [
+    "https://www.formula1.com/en/latest.html",
+    "https://www.motorsport.com/f1/news/",
+    "https://www.f1i.com/news/",
+    "https://www.autosport.com/f1/news/",
+    "https://www.crash.net/f1/news"
+]
 
-def scrape_source(name, url):
-    try:
-        r = requests.get(url, timeout=10)
-        soup = BeautifulSoup(r.text, "html.parser")
-        # extraction simplifiée → faudra ajuster pour chaque site
-        items = [a.get_text(strip=True) for a in soup.find_all("a") if a.get_text()]
-        return [{"title": t, "url": url, "source": name} for t in items[:10]]
-    except Exception as e:
-        print(f"[ERREUR scraping {name}] {e}")
-        return []
+def fetch_articles():
+    articles = []
+    for url in SITES:
+        try:
+            r = requests.get(url, timeout=10)
+            r.raise_for_status()
+            soup = BeautifulSoup(r.text, "html.parser")
+            # Simplifié pour la démo : récupérer tous les titres h3
+            for h3 in soup.find_all("h3"):
+                title = h3.get_text(strip=True)
+                link_tag = h3.find_parent("a")
+                link = link_tag["href"] if link_tag else url
+                articles.append({"title": title, "url": link, "content": title})
+        except Exception as e:
+            print(f"Erreur sur {url}: {e}")
+    return articles
 
 def run_bot():
-    raw_articles = []
-    for name, url in SOURCES.items():
-        raw_articles.extend(scrape_source(name, url))
+    articles = fetch_articles()
+    if not articles:
+        return
+    
+    # Regrouper titres similaires
+    texts = [a["content"] for a in articles]
+    summary = summarize_and_compare(texts)
 
-    validated = analyze_articles(raw_articles)
-    save_articles(validated)
+    # Ajouter chaque article en base (ou le résumé global si tu veux)
+    for article in articles:
+        add_article(article["title"], article["url"], article["content"])
+
+    print(f"Bot a ajouté {len(articles)} articles.")
