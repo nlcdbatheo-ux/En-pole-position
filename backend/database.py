@@ -1,39 +1,32 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
-DATABASE_URL = "sqlite:///articles.db"
+DATABASE_URL = "sqlite:///./articles.db"
 
-Base = declarative_base()
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 class Article(Base):
     __tablename__ = "articles"
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, unique=True, index=True)
-    url = Column(String)
-    content = Column(Text)
+    title = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    url = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
 
-def add_article(title, url, content):
-    session = SessionLocal()
-    exists = session.query(Article).filter_by(title=title).first()
-    if exists:
-        session.close()
-        return exists
-    article = Article(title=title, url=url, content=content)
-    session.add(article)
-    session.commit()
-    session.refresh(article)
-    session.close()
-    return article
-
-def get_all_articles():
+def get_articles():
     session = SessionLocal()
     articles = session.query(Article).order_by(Article.created_at.desc()).all()
     session.close()
-    return articles
+    return [{"title": a.title, "content": a.content, "url": a.url, "created_at": a.created_at} for a in articles]
+
+def add_article(title: str, content: str, url: str):
+    session = SessionLocal()
+    article = Article(title=title, content=content, url=url)
+    session.add(article)
+    session.commit()
+    session.close()
