@@ -1,31 +1,22 @@
 import requests
+import os
 
-OPENROUTER_API_KEY = "TON_OPENROUTER_API_KEY"
-MODEL = "gemini-2.5-flash"
+GEMMY_API_KEY = os.environ.get("GEMMY_API_KEY")
+GEMMY_MODEL = "2.5-flash"
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-def summarize_and_compare(texts):
-    """
-    Prend une liste de textes et renvoie un résumé des informations similaires.
-    """
-    prompt = (
-        "Compare ces textes et renvoie un résumé unique en français "
-        "des informations similaires ou redondantes. "
-        "Ne change pas le sens."
-        f"\n\n{texts}"
-    )
-    
-    response = requests.post(
-        "https://openrouter.ai/api/v1/completions",
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": MODEL,
-            "input": prompt,
-            "max_output_tokens": 500
-        }
-    )
-    
-    data = response.json()
-    return data.get("completion", "").strip()
+def query_gemmy(prompt: str):
+    headers = {
+        "Authorization": f"Bearer {GEMMY_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": GEMMY_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.5
+    }
+    response = requests.post(OPENROUTER_URL, json=data, headers=headers)
+    response.raise_for_status()
+    result = response.json()
+    # Retourne le texte du message généré
+    return result["choices"][0]["message"]["content"]
