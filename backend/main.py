@@ -1,31 +1,17 @@
-# backend/main.py
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from .bot import get_articles, validate_and_store  # import relatif correct
+from .bot import fetch_articles, validate_and_store
 
-app = FastAPI()
+app = FastAPI(title="F1 News Aggregator")
 
-# Autoriser le front (CORS)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # tu peux restreindre si tu veux
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.get("/")
+async def root():
+    return {"message": "API F1 opérationnelle !"}
 
 @app.get("/articles")
-def read_articles():
-    """Récupère et retourne les articles scrapés"""
-    articles = get_articles()
-    return {"articles": articles}
-
-@app.post("/validate")
-def validate_article(article: dict):
-    """Valide un article via l'IA"""
-    text = article.get("text", "")
-    validated = validate_and_store(text)
-    if validated:
-        return {"validated_text": validated}
-    return {"error": "Impossible de valider l'article"}
-
+async def get_articles():
+    """
+    Récupère et valide les articles F1, puis retourne les articles pertinents.
+    """
+    articles = fetch_articles()
+    valid_articles = validate_and_store(articles)
+    return {"articles": valid_articles}
