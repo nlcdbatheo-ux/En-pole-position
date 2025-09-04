@@ -1,79 +1,54 @@
+# backend/bot.py
+import os
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
-from openrouter import OpenRouter  # supposons que c'est l'API Gemini/Flash
-import os
+from openrouter import OpenRouterClient
+from dotenv import load_dotenv
 
-# Liste de sites à scraper
+load_dotenv()
+
+# Initialisation du client OpenRouter avec la clé Mistral
+API_KEY = os.getenv("MISTRAL_API_KEY")
+client = OpenRouterClient(api_key=API_KEY)
+
+# Liste exacte des sites à scraper
 SITES = [
-    "https://www.f1i.com/news/",
-    "https://www.formula1.com/en/latest.html",
-    "https://www.motorsport.com/f1/news/",
-    "https://www.crash.net/f1/news",
-    "https://www.autosport.com/f1/news/",
-    "https://www.f1news.com/",
-    "https://www.racefans.net/category/formula-1/",
-    "https://www.sportskeeda.com/go/formula-1"
+    "https://www.auto-moto.com",
+    "https://www.caradisiac.com",
+    "https://www.largus.fr",
+    "https://www.motorlegend.com",
+    "https://www.automobile-sportive.com"
 ]
 
-# Stockage des articles en mémoire pour l'exemple
-ARTICLES_DB = []
-
-# Initialisation du client OpenRouter (Gemini/Flash)
-OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
-client = OpenRouter(api_key=OPENROUTER_KEY)
-
-def fetch_articles():
-    """Récupère les articles depuis les sites définis."""
+def get_articles():
+    """Scrape les articles des sites définis et retourne une liste."""
     articles = []
     for site in SITES:
         try:
-            r = requests.get(site, timeout=10)
+            r = requests.get(site)
             r.raise_for_status()
             soup = BeautifulSoup(r.text, "html.parser")
-            # Exemple générique : tous les liens d'article
-            for link in soup.find_all("a", href=True):
-                href = link["href"]
-                title = link.get_text(strip=True)
-                if title and href.startswith("http"):
-                    articles.append({
-                        "title": title,
-                        "url": href,
-                        "site": site,
-                        "date": datetime.now().isoformat()
-                    })
+            # exemple : récupérer tous les <h2> comme titres
+            for h2 in soup.find_all("h2"):
+                articles.append(h2.get_text(strip=True))
         except Exception as e:
-            print(f"Erreur pour {site}: {e}")
+            print(f"Erreur sur {site}: {e}")
     return articles
 
-def ai_reformulate(article_text):
-    """Reformule l'article via l'IA Gemini/Flash OpenRouter."""
-    prompt = f"Résume et reformule cet article de F1 de manière concise et claire:\n\n{article_text}"
+def validate_and_store(article_text):
+    """Envoie le texte à l'IA pour validation ou enrichissement, retourne le résultat."""
     try:
-        response = client.chat.create(
-            model="gpt-gemini-1",  # ou gpt-flash-1 selon le modèle
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7
+        response = client.completions.create(
+            model="gemini-1",  # ou "flash" si tu veux Flash
+            messages=[
+                {"role": "system", "content": "Tu es un assistant qui valide le texte."},
+                {"role": "user", "content": article_text}
+            ],
+            max_tokens=500
         )
-        return response.choices[0].message["content"]
+        # Récupération du texte renvoyé par le modèle
+        validated_text = response.choices[0].message["content"]
+        return validated_text
     except Exception as e:
         print(f"Erreur IA: {e}")
-        return article_text
-
-def validate_and_store():
-    """Récupère, reformule et stocke les articles uniques."""
-    global ARTICLES_DB
-    fetched = fetch_articles()
-    new_articles = []
-    for art in fetched:
-        # Vérifier doublons basiques par URL
-        if not any(a["url"] == art["url"] for a in ARTICLES_DB):
-            # Requête IA pour résumé/reformulation
-            art["summary"] = ai_reformulate(art["title"])
-            ARTICLES_DB.append(art)
-            new_articles.append(art)
-    return new_articles
-
-def get_articles():
-    """Retourne tous les articles stockés, triés par date."""
-    return sorted(ARTICLES_DB, key=lambda x: x["date"], reverse=True)
+        return None
