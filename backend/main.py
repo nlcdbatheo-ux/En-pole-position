@@ -1,34 +1,35 @@
+# backend/main.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import os
-from bot import validate_and_store, get_articles
+from .bot import validate_and_store, get_articles  # import relatif corrigé
 
-app = FastAPI()
+app = FastAPI(title="En Pôle Position Backend")
 
-# CORS (pour que le front-end puisse accéder)
+# Autoriser le front-end à faire des requêtes au back-end
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # tu peux mettre ton domaine ici pour plus de sécurité
+    allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
-# Montre le front-end si nécessaire
-if os.path.isdir("../frontend/dist"):
-    app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="frontend")
+# Route pour récupérer les articles validés
+@app.get("/api/validated")
+async def get_validated_articles():
+    try:
+        articles = get_articles()  # fonction depuis bot.py
+        validated_articles = validate_and_store(articles)  # valider et stocker
+        return {"status": "success", "data": validated_articles}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
-# Endpoint pour déclencher le scrape / validation
-@app.get("/api/validate")
-def validate():
-    new_articles = validate_and_store()
-    return {"new_articles_count": len(new_articles), "new_articles": new_articles}
+# Route test
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "Backend running"}
 
-# Endpoint pour récupérer tous les articles
-@app.get("/api/articles")
-def articles():
-    return get_articles()
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+# Montage du front-end statique (Vite build)
+app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="frontend")
