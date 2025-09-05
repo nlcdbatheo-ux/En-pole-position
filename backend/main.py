@@ -1,17 +1,34 @@
 from fastapi import FastAPI
-from .bot import fetch_articles, validate_and_store
+from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.background import BackgroundScheduler
+from backend.bot import scrape_and_store, get_articles
 
-app = FastAPI(title="F1 News Aggregator")
+app = FastAPI(title="En Pôle Position - F1 News")
 
-@app.get("/")
-async def root():
-    return {"message": "API F1 opérationnelle !"}
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/articles")
-async def get_articles():
-    """
-    Récupère et valide les articles F1, puis retourne les articles pertinents.
-    """
-    articles = fetch_articles()
-    valid_articles = validate_and_store(articles)
-    return {"articles": valid_articles}
+# --------------------
+# Scraper auto toutes les 10 minutes
+scheduler = BackgroundScheduler()
+scheduler.add_job(scrape_and_store, "interval", minutes=10)
+scheduler.start()
+
+@app.on_event("shutdown")
+def shutdown_event():
+    scheduler.shutdown()
+
+# --------------------
+@app.get("/api/refresh")
+def refresh_articles():
+    new_articles = scrape_and_store()
+    return {"new_articles": new_articles}
+
+@app.get("/api/articles")
+def list_articles():
+    return {"articles": get_articles()}
