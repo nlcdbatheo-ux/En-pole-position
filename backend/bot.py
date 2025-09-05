@@ -1,162 +1,99 @@
 import requests
 from bs4 import BeautifulSoup
-import hashlib
-import re
-import random
 import nltk
-from datetime import datetime
-from googletrans import Translator
-
-# NLTK
-nltk.download("punkt", quiet=True)
-nltk.download("wordnet", quiet=True)
-from nltk.corpus import wordnet
+from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
+import difflib
+from deep_translator import GoogleTranslator
 
-# Traducteur Google
-translator = Translator()
+nltk.download("punkt", quiet=True)
+nltk.download("stopwords", quiet=True)
 
-# --------------------
-# Base mémoire
-articles_db = []
-
-# --------------------
-# Sites spécialisés F1
-NEWS_SITES = [
-    "https://fr.motorsport.com/f1/news/",
-    "https://www.formula1.com/en/latest/all.html",
+# --- Liste des sites spécialisés F1 ---
+SITES = [
     "https://www.f1i.fr/",
-    "https://www.nextgen-auto.com/-Formule-1-.html",
+    "https://motorsport.com/f1/news/",
+    "https://www.formula1.com/en/latest/all",
     "https://www.autohebdo.fr/f1/",
-    "https://www.confidential-renault.fr/",
-    "https://f1only.fr/",
-    "https://www.caradisiac.com/f1/"
+    "https://www.nextgen-auto.com/-Formule-1-.html",
+    "https://fr.motorsport.com/f1/news/",
+    "https://www.racingnews365.com/f1-news",
+    "https://www.grandprix.com/news.html"
 ]
 
-# --------------------
-# Mots-clés
-KEYWORDS = [
-    "formule 1", "f1", "grand prix", "verstappen", "hamilton", "leclerc",
-    "ferrari", "red bull", "mercedes", "mclaren", "aston martin", "alpine"
-]
-
-def fetch_html(url):
-    try:
-        response = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-        if response.status_code == 200:
-            return response.text
-    except Exception:
-        return None
-    return None
-
-def extract_articles_from_site(url):
-    html = fetch_html(url)
-    if not html:
-        return []
-
-    soup = BeautifulSoup(html, "html.parser")
-    articles = []
-
-    for link in soup.find_all("a", href=True):
-        title = link.get_text(strip=True)
-        href = link["href"]
-
-        if not title or len(title) < 20:
-            continue
-
-        if href.startswith("/"):
-            href = url.rstrip("/") + href
-
-        if any(kw.lower() in title.lower() for kw in KEYWORDS):
-            articles.append({"title": title, "url": href})
-
-    return articles
-
-def normalize_text(text):
-    text = text.lower()
-    text = re.sub(r"[^a-z0-9 ]", " ", text)
-    return " ".join(text.split())
-
-def get_hash(text):
-    return hashlib.md5(normalize_text(text).encode()).hexdigest()
-
-def are_similar(text1, text2):
-    set1, set2 = set(normalize_text(text1).split()), set(normalize_text(text2).split())
-    common = set1 & set2
-    return len(common) / max(len(set1), 1) > 0.4
-
-def synonymize_word(word):
-    synsets = wordnet.synsets(word, lang="fra")
-    if synsets:
-        lemmas = synsets[0].lemma_names("fra")
-        if lemmas:
-            return random.choice(lemmas)
-    return word
-
-def reformulate(text):
-    sentences = sent_tokenize(text, language="french")
-    reformulated = []
-    for sent in sentences:
-        words = word_tokenize(sent, language="french")
-        new_words = []
-        for w in words:
-            if random.random() < 0.1:
-                new_words.append(synonymize_word(w))
-            else:
-                new_words.append(w)
-        reformulated.append(" ".join(new_words))
-    return " ".join(reformulated)
-
-def summarize(text, max_sentences=2):
-    """Résumé très simple: garder les premières phrases"""
-    sentences = sent_tokenize(text, language="french")
-    return " ".join(sentences[:max_sentences])
-
+# --- Traduction ---
 def translate_to_french(text):
     try:
-        detected = translator.detect(text).lang
-        if detected != "fr":
-            return translator.translate(text, src=detected, dest="fr").text
+        return GoogleTranslator(source="auto", target="fr").translate(text)
     except Exception:
         return text
-    return text
 
-def scrape_and_store():
-    global articles_db
-    scraped_articles = []
+# --- Scraping articles ---
+def scrape_articles():
+    articles = []
+    for site in SITES:
+        try:
+            r = requests.get(site, timeout=10)
+            r.raise_for_status()
+            soup = BeautifulSoup(r.text, "html.parser")
+            links = soup.find_all("a")
+            for link in links[:10]:
+                title = link.get_text(strip=True)
+                url = link.get("href")
+                if title and url:
+                    if url.startswith("/"):
+                        url = site.rstrip("/") + url
+                    articles.append({"title": title, "url": url})
+        except Exception as e:
+            print(f"Erreur scraping {site}: {e}")
+    return articles
 
-    for site in NEWS_SITES:
-        scraped_articles.extend(extract_articles_from_site(site))
+# --- Vérifie si deux articles sont similaires ---
+def are_similar(text1, text2, threshold=0.6):
+    return difflib.SequenceMatcher(None, text1.lower(), text2.lower()).ratio() > threshold
 
-    validated = []
-    for art in scraped_articles:
-        h = get_hash(art["title"])
+# --- Supprime doublons ---
+def deduplicate_articles(articles):
+    unique = []
+    for art in articles:
+        if not any(are_similar(art["title"], u["title"]) for u in unique):
+            unique.append(art)
+    return unique
 
-        if any(a["hash"] == h for a in articles_db):
-            continue
+# --- Résumé simple ---
+def summarize(text, max_sentences=3):
+    words = word_tokenize(text.lower())
+    sw = set(stopwords.words("english") + stopwords.words("french"))
+    words = [w for w in words if w.isalnum() and w not in sw]
 
-        if any(are_similar(a["title"], art["title"]) for a in articles_db):
-            continue
+    freq = {}
+    for w in words:
+        freq[w] = freq.get(w, 0) + 1
 
-        # Traduire si anglais
-        title = translate_to_french(art["title"])
+    sentences = sent_tokenize(text)
+    ranking = {}
+    for sent in sentences:
+        for w in word_tokenize(sent.lower()):
+            if w in freq:
+                ranking[sent] = ranking.get(sent, 0) + freq[w]
 
-        # Reformuler
-        new_title = reformulate(title)
+    ranked = sorted(ranking.items(), key=lambda x: x[1], reverse=True)
+    summary = " ".join([s for s, _ in ranked[:max_sentences]])
+    return summary if summary else text
 
-        # Résumer
-        summary = summarize(new_title)
+# --- Pipeline principal ---
+def process_articles():
+    print("🔎 Récupération des articles...")
+    raw_articles = scrape_articles()
+    articles = deduplicate_articles(raw_articles)
 
-        validated.append({
-            "title": new_title,
-            "summary": summary,
+    processed = []
+    for art in articles:
+        summary = summarize(art["title"])
+        summary_fr = translate_to_french(summary)
+        processed.append({
+            "title": art["title"],
             "url": art["url"],
-            "date": datetime.utcnow().isoformat(),
-            "hash": h
+            "summary": summary_fr
         })
-
-    articles_db.extend(validated)
-    return validated
-
-def get_articles():
-    return articles_db
+    return processed
